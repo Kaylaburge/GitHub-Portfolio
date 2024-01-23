@@ -1,0 +1,251 @@
+---
+output:
+  html_document: default
+  word_document: default
+  pdf_document: default
+---
+```{r}
+# Load necessary packages.
+library(tidyverse)
+library(ggplot2)
+library(reshape2)
+library(vtable)
+library(dplyr)
+library(knitr)
+#install.packages("hms")
+
+tidyverse_conflicts(only = NULL)
+
+knitr::opts_chunk$set(echo = FALSE)
+options(knitr.table.format = "latex")
+
+```
+
+```{r}
+#install.packages("kableExtra", dependencies = TRUE)
+```
+
+
+Step 1: Read in the StoreData.csv file into a table.
+
+```{r}
+# Import Data from CSV with header
+beliefs <- read.csv(file.choose(),header=TRUE) ## Choose MAMbeliefs.csv file
+```
+
+```{r}
+head(beliefs)
+```
+
+Step 2: Get some basic info about the variables.
+
+```{r}
+# Summarize the data.
+st(beliefs)
+```
+
+```{r}
+# Grab comparison columns.
+data <- select(beliefs, c(subj, contains("Price")))
+data <- select(data, -contains("Imp"))
+
+# Make a tidy data set
+melt_data <- melt(data, id="subj")
+
+# Compare means across brands for each attribute.
+ggplot(melt_data, aes(x=variable, y=value, fill=variable)) +
+  geom_boxplot() + guides(fill=FALSE)
+```
+Brand D seems to have the most market share on the Price feature. Brand C has a similar mean so they might equally share the market.
+
+```{r}
+# Remove existing data frame
+rm(data)
+
+# Grab comparison columns.
+data <- select(beliefs, c(subj, contains("Style")))
+data <- select(data, -contains("Imp"))
+
+# Remove existing data frame
+rm(melt_data)
+
+# Make a tidy data set
+melt_data <- melt(data, id="subj")
+
+# Remove existing data frame
+rm(data)
+
+# Compare means across brands for each attribute.
+ggplot(melt_data, aes(x=variable, y=value, fill=variable)) +
+  geom_boxplot() + guides(fill=FALSE)
+```
+Brand B seems to have the highest overall market share on the Style feature to consumers.
+
+```{r}
+# Remove existing data frame
+rm(data)
+
+# Grab comparison columns.
+data <- select(beliefs, c(subj, contains("Durability")))
+data <- select(data, -contains("Imp"))
+
+# Remove existing data frame
+rm(melt_data)
+
+# Make a tidy data set
+melt_data <- melt(data, id="subj")
+
+# Remove existing data frame
+rm(data)
+
+# Compare means across brands for each attribute.
+ggplot(melt_data, aes(x=variable, y=value, fill=variable)) +
+  geom_boxplot() + guides(fill=FALSE)
+
+```
+Brand C has the most market share in the Durability feature to consumer taking the survey.
+
+```{r}
+# Remove existing data frame
+rm(data)
+
+# Grab comparison columns.
+data <- select(beliefs, c(subj, contains("Comfort")))
+data <- select(data, -contains("Imp"))
+
+# Remove existing data frame
+rm(melt_data)
+
+# Make a tidy data set
+melt_data <- melt(data, id="subj")
+
+# Remove existing data frame
+rm(data)
+
+# Compare means across brands for each attribute.
+ggplot(melt_data, aes(x=variable, y=value, fill=variable)) +
+  geom_boxplot() + guides(fill=FALSE)
+
+```
+
+```{r}
+
+# Remove existing data frame
+rm(data)
+
+# Grab comparison columns.
+data <- select(beliefs, c(subj, contains("Features")))
+data <- select(data, -contains("Imp"))
+
+# Remove existing data frame
+rm(melt_data)
+
+# Make a tidy data set
+melt_data <- melt(data, id="subj")
+
+# Remove existing data frame
+rm(data)
+
+# Compare means across brands for each attribute.
+ggplot(melt_data, aes(x=variable, y=value, fill=variable)) +
+  geom_boxplot() + guides(fill=FALSE)
+
+```
+
+Trying to create all boxplots in 1 code chunk. This code chunk does not work. I'm still playing around with it.
+
+```{r}
+# Remove existing data frame
+rm(data)
+
+# Grab comparison columns.
+data <- select(beliefs, c(subj, contains("Warmth")))
+data <- select(data, -contains("Imp"))
+
+# Remove existing data frame
+rm(melt_data)
+
+# Make a tidy data set
+melt_data <- melt(data, id="subj")
+
+# Remove existing data frame
+rm(data)
+
+# Compare means across brands for each attribute.
+ggplot(melt_data, aes(x=variable, y=value, fill=variable)) +
+  geom_boxplot() + guides(fill=FALSE)
+
+```
+
+Step 3: Get overall brand attitude predictions
+
+```{r}
+
+# We need to get four Overall Attitudes, one for each brand.
+beliefs <- beliefs %>%
+  mutate(
+    Att_A = Price_Imp*Brand_A_Price + Style_Imp*Brand_A_Style + Durability_Imp*Brand_A_Durability + Comfort_Imp*Brand_A_Comfort + Features_Imp*Brand_A_Features + Warmth_Imp*Brand_A_Warmth,
+    Att_B = Price_Imp*Brand_B_Price + Style_Imp*Brand_B_Style + Durability_Imp*Brand_B_Durability + Comfort_Imp*Brand_B_Comfort + Features_Imp*Brand_B_Features + Warmth_Imp*Brand_B_Warmth,
+    Att_C = Price_Imp*Brand_C_Price + Style_Imp*Brand_C_Style + Durability_Imp*Brand_C_Durability + Comfort_Imp*Brand_C_Comfort + Features_Imp*Brand_C_Features + Warmth_Imp*Brand_C_Warmth,
+    Att_D = Price_Imp*Brand_D_Price + Style_Imp*Brand_D_Style + Durability_Imp*Brand_D_Durability + Comfort_Imp*Brand_D_Comfort + Features_Imp*Brand_D_Features + Warmth_Imp*Brand_D_Warmth
+)
+# Check them out.
+st(select(beliefs, contains("Att")))
+```
+
+Brand D has the highest average attitude. We need to test for the First Choice Rule to see if Brand D is the highest choice answer.
+
+Step 4: Get first choice share predictions
+
+```{r}
+beliefs <-
+  beliefs %>%
+    mutate(# Calculate max attitude
+           max_att = pmax(Att_A, Att_B, Att_C, Att_D),
+           fc_A = Att_A == max_att,
+           fc_B = Att_B == max_att,
+           fc_C = Att_C == max_att,
+           fc_D = Att_D == max_att,
+           # Count the number of ties for first.
+           nmax = fc_A + fc_B + fc_C + fc_D,
+           # and divide by nmax for get the choice share for each winner.
+           fc_A = fc_A / nmax,
+           fc_B = fc_B / nmax,
+           fc_C = fc_C / nmax,
+           fc_D = fc_D / nmax
+           )
+# Check them out.
+st(select(beliefs, contains("fc")))
+```
+
+Brand A is doing the worst. You can change the importance of the attribute or how people feel about that brand's attribute.
+
+Step 5: Simulate a specific strategy
+
+```{r}
+# Change Brand_A_Price to max rating of 10. That only affects Att_A. But that won't be the case for importance changes.
+beliefs <- beliefs %>%
+  mutate(
+    Att_A_new = Price_Imp*10 + Style_Imp*Brand_A_Style + Durability_Imp*Brand_A_Durability + Comfort_Imp*Brand_A_Comfort + Features_Imp*Brand_A_Features + Warmth_Imp*Brand_A_Warmth
+) 
+beliefs <-
+  beliefs %>%
+    mutate(# Calculate max attitude
+           max_att = pmax(Att_A_new, Att_B, Att_C, Att_D),
+           fc_A_new = Att_A_new == max_att,
+           fc_B_new = Att_B == max_att,
+           fc_C_new = Att_C == max_att,
+           fc_D_new = Att_D == max_att,
+           # Count the number of ties for first.
+           nmax = fc_A + fc_B + fc_C + fc_D,
+           # and divide by nmax for get the choice share for each winner.
+           fc_A_new = fc_A_new / nmax,
+           fc_B_new = fc_B_new / nmax,
+           fc_C_new = fc_C_new / nmax,
+           fc_D_new = fc_D_new / nmax
+           )
+# Check them out.
+st(select(beliefs, contains("_new")))
+```
+
+By chaning the importance of the attribute, the attitudes towards all 4 brands are more evenly distributed.
